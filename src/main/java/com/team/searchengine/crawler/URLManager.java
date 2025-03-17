@@ -16,17 +16,17 @@ public class URLManager {
 
     public URLManager() {
         this.visitedUrls = new HashSet<>();
-        loadVisitedUrls();
+        loadVisitedUrls();           //load the visited urls in visitedurls
     }
 
     public boolean isVisited(String url) {
-        return visitedUrls.contains(url);
+        return visitedUrls.contains(url); //ready functions in hashset
     }
 
     public void markVisited(String url) {
-        visitedUrls.add(url);
-        saveVisitedUrls();
-    }
+        visitedUrls.add(url);           //ready functions in hashset
+        saveVisitedUrls();             //save the list visitedUrls in file  visited_urls.txt
+    } 
 
     private void loadVisitedUrls() {
         File file = new File(VISITED_URLS_FILE);
@@ -57,21 +57,33 @@ public class URLManager {
 class RobotsTxtManager {
     private final Set<String> disallowedPaths = new HashSet<>();
 
+  //check disallowed urls in the robot.txt
     public boolean canCrawl(String url) {
         try {
+
+            //Extract the robots.txt URL
+
             URL urlObj = new URL(url);
             String robotsTxtUrl = urlObj.getProtocol() + "://" + urlObj.getHost() + "/robots.txt";
             
+
+//Creates an HTTP connection to robots.txt
+// Uses GET request to retrieve the file
+
             HttpURLConnection connection = (HttpURLConnection) new URL(robotsTxtUrl).openConnection();
             connection.setRequestMethod("GET");
-            
+
+            //If robots.txt exists, the server returns HTTP status 200
             if (connection.getResponseCode() == 200) {
+
+                //Read robots.txt Line by Line
                 try (BufferedReader br = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
                     String line;
                     while ((line = br.readLine()) != null) {
                         if (line.startsWith("Disallow:")) {
                             String[] parts = line.split(":", 2);
                             if (parts.length > 1) {  // Check if there are at least 2 parts
+                                //collect all paths that will disallowed in String disallowedPath
                                 String disallowedPath = parts[1].trim();
                                 disallowedPaths.add(disallowedPath);
                             }
@@ -92,6 +104,9 @@ class RobotsTxtManager {
 
     private boolean isDisallowed(String url) {
         try {
+
+            //check url in string disallowedPaths 
+
             URL urlObj = new URL(url);
             String path = urlObj.getPath();
             for (String disallowed : disallowedPaths) {
