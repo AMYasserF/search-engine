@@ -2,4 +2,5 @@ com\team\searchengine\crawler\CrawlerManager.class
 com\team\searchengine\App.class
 com\team\searchengine\crawler\Crawler.class
 com\team\searchengine\crawler\CrawlerTask.class
+com\team\searchengine\crawler\RobotsTxtManager.class
 com\team\searchengine\crawler\URLManager.class

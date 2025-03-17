@@ -16,10 +16,12 @@ public class CrawlerTask implements Runnable {
 
     private final Queue<String> urlQueue;
     private final URLManager urlManager;
+    private final RobotsTxtManager robotsTxtManager;
 
     public CrawlerTask(Queue<String> urlQueue, URLManager urlManager) {
         this.urlQueue = urlQueue;
         this.urlManager = urlManager;
+        this.robotsTxtManager = new RobotsTxtManager();
     }
 
     @Override
@@ -32,7 +34,7 @@ public class CrawlerTask implements Runnable {
                 url = urlQueue.poll();
             }
 
-            if (url == null || urlManager.isVisited(url))
+            if (url == null || urlManager.isVisited(url) || !robotsTxtManager.canCrawl(url))
                 continue;
 
             try {
@@ -41,14 +43,13 @@ public class CrawlerTask implements Runnable {
                 Document doc = Jsoup.connect(url).get();
                 urlManager.markVisited(url);
 
-                Elements links = doc.select(("a[href]"));
+                Elements links = doc.select("a[href]");
                 synchronized (urlQueue) {
                     for (Element link : links) {
                         String nextUrl = link.absUrl("href");
-                        if (!urlManager.isVisited(nextUrl)) {
+                        if (!urlManager.isVisited(nextUrl) && robotsTxtManager.canCrawl(nextUrl)) {
                             urlQueue.add(nextUrl);
                         }
-
                     }
                 }
             } catch (IOException ex) {
