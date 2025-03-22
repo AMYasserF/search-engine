@@ -13,8 +13,8 @@ public class Crawler {
     public static void main(String[] args) {
 
         List<String> seedUrls = Arrays.asList("https://www.britannica.com/animal/cat");
-        int threadCount = 100;
-        int maxPages = 100;
+        int threadCount = Integer.parseInt(args[0]);
+        int maxPages = Integer.parseInt(args[1]);
         CrawlerManager manager = new CrawlerManager(seedUrls, threadCount, maxPages);
         manager.startCrawling();
 

@@ -1,0 +1,1 @@
+Another example document. This one is used to test tokenization and indexing.

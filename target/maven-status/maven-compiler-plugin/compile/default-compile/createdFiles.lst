@@ -1,5 +1,13 @@
-com\team\searchengine\crawler\CrawlerManager.class
+com\team\searchengine\indexer\utils\DBManager.class
 com\team\searchengine\App.class
-com\team\searchengine\crawler\Crawler.class
-com\team\searchengine\crawler\CrawlerTask.class
+com\team\searchengine\indexer\tokenizer\Doc.class
 com\team\searchengine\crawler\URLManager.class
+com\team\searchengine\indexer\Models\TokenService.class
+com\team\searchengine\crawler\Crawler.class
+com\team\searchengine\indexer\tokenizer\Tokenizer.class
+com\team\searchengine\indexer\Models\DocumentService.class
+com\team\searchengine\indexer\tokenizer\Token.class
+com\team\searchengine\indexer\Indexer.class
+com\team\searchengine\crawler\CrawlerManager.class
+com\team\searchengine\indexer\Language.class
+com\team\searchengine\crawler\CrawlerTask.class
