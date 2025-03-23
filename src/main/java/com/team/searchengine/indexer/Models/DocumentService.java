@@ -31,6 +31,17 @@ public class DocumentService {
     
         documentTable.updateOne(query, updateQuery);
     }
+    
+      // Check if a document exists by its path
+      public Document getDocumentByPath(String path) {
+        return documentTable.find(new Document("path", path)).first();
+    }
+
+    // Add a new document to the collection
+    public void addDocument(String path) {
+        Document newDoc = new Document("path", path).append("indexed", false);
+        documentTable.insertOne(newDoc);
+    }
 
 
 

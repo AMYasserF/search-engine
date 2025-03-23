@@ -12,7 +12,7 @@ import org.bson.types.ObjectId;
 
 import java.nio.file.Paths;
 import java.util.HashMap;
-
+import java.io.File;
 
 public class Indexer
 {
@@ -64,6 +64,21 @@ public class Indexer
         Language.initalizeDictionary(stopsPath);
         Language.initalizeHTML(scorePath);
 
+        File folder = new File(docPath);
+    File[] listOfFiles = folder.listFiles((dir, name) -> name.endsWith(".txt"));
+
+    if (listOfFiles != null) {
+        for (File file : listOfFiles) {
+            String fileName = file.getName().replace(".txt", ""); // Remove .txt extension
+            Document existingDoc = docService.getDocumentByPath(fileName);
+
+            if (existingDoc == null) {
+                // Insert the new document into the documents collection
+                System.out.println("Adding new document to database: " + fileName);
+                docService.addDocument(fileName);
+            }
+        }
+    }
 
         FindIterable<Document> patch = docService.getUnindexedDocuments();
 
