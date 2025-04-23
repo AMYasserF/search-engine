@@ -8,63 +8,57 @@ package com.team.searchengine.crawler;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.select.Elements;
+
+import com.team.searchengine.crawler.RobotsTxtManager;
+import com.team.searchengine.crawler.URLUtils;
+
 import org.jsoup.nodes.Element;
 import java.io.IOException;
 import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class CrawlerTask implements Runnable {
-
-    private final Queue<String> urlQueue;
+    private final ConcurrentLinkedQueue<String> urlQueue;
     private final URLManager urlManager;
+    private final CrawlerManager manager;
     private final RobotsTxtManager robotsTxtManager;
 
-    public CrawlerTask(Queue<String> urlQueue, URLManager urlManager) {
+    public CrawlerTask(ConcurrentLinkedQueue<String> urlQueue, URLManager urlManager, CrawlerManager manager) {
         this.urlQueue = urlQueue;
         this.urlManager = urlManager;
+        this.manager = manager;
         this.robotsTxtManager = new RobotsTxtManager();
     }
 
     @Override
     public void run() {
-        while (CrawlerManager.canCrawlMore()) {
-            String url;
+        while (manager.canCrawlMore()) {
+            System.out.println("thread " + Thread.currentThread().getName() + "Started");
+            String url = urlQueue.poll();
 
-            //synchronized block ensures only one thread takes a URL at a time
-            synchronized (urlQueue) {
-                if (urlQueue.isEmpty())
-                    break;
-                url = urlQueue.poll();
+            System.out.println("on url: " + url);
+            if (url == null) {
+                System.out.println(
+                        "Queue is empty. No more URLs to crawl. Exiting thread " + Thread.currentThread().getName());
+                break; // Exit the loop and thread
             }
-
-            //check url is in visited_urls.txt or it is disallowed in robot.txt 
-            //and print the allowed urls with true and disallwoed urls with false
-
-            if (url == null || urlManager.isVisited(url) || !robotsTxtManager.canCrawl(url))
+            if (urlManager.isVisited(url) || !robotsTxtManager.canCrawl(url)) {
+                System.out.println("URL not allowed or already visited: " + url);
                 continue;
-
+            }
             try {
                 System.out.println("Crawling: " + url);
-                CrawlerManager.incrementCrawlCount();
 
-                //JSoup connects to the URL.
-                //Fetches the HTML document of the webpage.
+                manager.incrementCrawlCount();
                 Document doc = Jsoup.connect(url).get();
-
-                //save allowed urls in set visitedUrls and re-overwrite the whole visited_urls.txt
                 urlManager.markVisited(url);
-
-                //get all hyper-links
                 Elements links = doc.select("a[href]");
-                synchronized (urlQueue) {
-                    for (Element link : links) {
-
-            //converts relative urls like /page1 into absolute urls https://example.com/page1
-
-                        String nextUrl = link.absUrl("href");
-                        //add all valid hyper-links to urlQueue
-                        if (!urlManager.isVisited(nextUrl) && robotsTxtManager.canCrawl(nextUrl)) {
-                            urlQueue.add(nextUrl);
-                        }
+                for (Element link : links) {
+                    String nextUrl = URLUtils.normalizeUrl(link.absUrl("href"));
+                    if (!urlManager.isVisited(nextUrl) &&
+                            robotsTxtManager.canCrawl(nextUrl) &&
+                            URLUtils.isHtmlLink(nextUrl)) {
+                        urlQueue.add(nextUrl);
                     }
                 }
             } catch (IOException ex) {

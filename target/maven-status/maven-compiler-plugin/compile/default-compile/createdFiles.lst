@@ -12,3 +12,4 @@ com\team\searchengine\crawler\CrawlerManager.class
 com\team\searchengine\indexer\Language.class
 com\team\searchengine\crawler\CrawlerTask.class
 com\team\searchengine\crawler\RobotsTxtManager.class
+com\team\searchengine\crawler\URLUtils.class

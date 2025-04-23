@@ -1,56 +1,118 @@
-/*
- *  Manages the entire crawling process including:
- * Trackig visited URLs
- * Handling multithreading
+/**
+ * CrawlerManager.java
+ * Manages the entire crawling process including:
+ * - Tracking visited URLs
+ * - Handling multithreading
+ * - Enforcing maximum pages limit
  */
 package com.team.searchengine.crawler;
 
 import java.util.List;
-import java.util.LinkedList;
 import java.util.Queue;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class CrawlerManager {
-
-    private final Queue<String> urlQueue;
+    private final ConcurrentLinkedQueue<String> urlQueue;
     private final List<Thread> threads;
     private final URLManager urlManager;
     private final int threadCount;
-    private static int MAX_PAGES;
-    private static int pagesCrawled = 0;
+    private final int maxPages;
+    private final AtomicInteger pagesCrawled = new AtomicInteger(0);
+    private static final String QUEUE_FILE = "url_queue.txt";
 
     public CrawlerManager(List<String> seedUrls, int threadCount, int maxPages) {
-        this.urlQueue = new LinkedList<>(seedUrls);
-        this.threads = new LinkedList<>();
+        this.urlQueue = loadUrlQueue(seedUrls);
+        this.threads = new ArrayList<>();
         this.urlManager = new URLManager();
         this.threadCount = threadCount;
-        MAX_PAGES = maxPages;
-
+        this.maxPages = maxPages;
     }
 
-    static public synchronized void incrementCrawlCount() {
-        pagesCrawled++;
+    // Load the queue from file (before crawling starts)
+    private ConcurrentLinkedQueue<String> loadUrlQueue(List<String> seedUrls) {
+        File file = new File(QUEUE_FILE);
+        ConcurrentLinkedQueue<String> queue = new ConcurrentLinkedQueue<>();
+
+        if (file.exists()) {
+
+            try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+                String line;
+
+                while ((line = br.readLine()) != null) {
+                    queue.add(line.trim());
+                    System.out.println("add " + line + " to the queue");
+                }
+            } catch (IOException e) {
+                System.err.println("Error loading URL queue: " + e.getMessage());
+            }
+
+            if (queue.isEmpty()) {
+                System.out.println("add  seed urls to the queue");
+
+                queue.addAll(seedUrls);
+                System.out.println("Current queue contents:");
+                for (String url : queue) {
+                    System.out.println(url);
+                }
+            }
+        } else {
+            // First time: add seed URLs
+            System.out.println("add  seed urls to the queue");
+            queue.addAll(seedUrls);
+        }
+        return queue;
     }
 
-    static public synchronized boolean canCrawlMore() {
-        return pagesCrawled < MAX_PAGES;
+    // Save the queue to file (after crawling ends)
+    public void saveUrlQueue() {
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter(QUEUE_FILE))) {
+            for (String url : urlQueue) {
+                bw.write(url);
+                bw.newLine();
+            }
+        } catch (IOException e) {
+            System.err.println("Error saving URL queue: " + e.getMessage());
+        }
+    }
+
+    public boolean canCrawlMore() {
+        return pagesCrawled.get() < maxPages;
+    }
+
+    public void incrementCrawlCount() {
+        pagesCrawled.incrementAndGet();
     }
 
     public void startCrawling() {
+        long startTime = System.currentTimeMillis();
+        System.out.println("start crawling");
+
         for (int i = 0; i < threadCount; i++) {
-            Thread thread = new Thread(new CrawlerTask(urlQueue, urlManager));
-            threads.add(thread);
-            thread.start();
+            Thread t = new Thread(new CrawlerTask(urlQueue, urlManager, this), "CrawlerThread-" + i);
+            threads.add(t);
+            t.start();
         }
 
-        for (Thread thread : threads) {
+        for (Thread t : threads) {
             try {
-                thread.join();
-            } catch (InterruptedException ex) {
-                System.err.println("Thread has been interruped");
+                t.join();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                System.err.println("Thread interrupted: " + t.getName());
             }
         }
 
-        System.out.println("Crawling finished!");
-    }
+        long endTime = System.currentTimeMillis();
+        System.out.println("Crawling completed in " + (endTime - startTime) / 1000.0 + " seconds.");
+        System.out.println("Total pages crawled: " + pagesCrawled.get());
 
+    }
 }
