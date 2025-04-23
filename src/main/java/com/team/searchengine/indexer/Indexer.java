@@ -11,83 +11,80 @@ import org.bson.Document;
 import org.bson.types.ObjectId;
 
 import java.nio.file.Paths;
-import java.util.HashMap;
 import java.io.File;
+import java.util.HashMap;
 
-public class Indexer
-{
+public class Indexer {
+
     private static TokenService tokenService;
     private static DocumentService docService;
     private static String stopsPath;
-    public static String docPath;
-    public static String scorePath;
+    private static String docPath;
+    private static String scorePath;
 
-
-    private static void initailizePath(){
+    private static void initializePaths() {
         String currentDirectory = System.getProperty("user.dir");
         stopsPath = Paths.get(currentDirectory, "resources", "stops.txt").toString();
         docPath = Paths.get(currentDirectory, "plain_docs").toString();
-        scorePath = Paths.get(currentDirectory, "resources" , "html.txt").toString();
-        docPath = docPath.trim();
+        scorePath = Paths.get(currentDirectory, "resources", "html.txt").toString();
     }
 
-    private static void initailizeDB()
-    {
-        MongoDatabase connection = DBManager.connect("mongodb://localhost:27017","test");
+    private static void initializeDB() {
+        MongoDatabase connection = DBManager.connect("mongodb://localhost:27017", "test");
         docService = new DocumentService(connection);
-        tokenService =  new TokenService(connection);
+        tokenService = new TokenService(connection);
     }
 
-    private static void index(String path, ObjectId docid, String doc_path) {
-        // Construct the full file path
-        String fullFilePath = Paths.get(docPath, path).toString()+".txt";
-
+    private static void indexDocument(String path, ObjectId docId, String docPath) {
+        String fullFilePath = Paths.get(Indexer.docPath, path).toString() + ".txt";
         System.out.println("Indexing document: " + fullFilePath);
-        if (!java.nio.file.Files.exists(Paths.get(fullFilePath))) {
+
+        File file = new File(fullFilePath);
+        if (!file.exists()) {
             throw new RuntimeException("File not found: " + fullFilePath);
         }
+
         try {
-            Tokenizer tokenizerInst = new Tokenizer(fullFilePath); // Pass the full file path
-            HashMap<String, Token> dictionary = tokenizerInst.tokenizeDocument(doc_path);
-            tokenService.insert(dictionary, docid.toString(), tokenizerInst.getWordCount());
+            Tokenizer tokenizer = new Tokenizer(fullFilePath);
+            HashMap<String, Token> dictionary = tokenizer.tokenizeDocument(docPath);
+            tokenService.insert(dictionary, docId.toString(), tokenizer.getWordCount());
         } catch (Exception e) {
             throw new RuntimeException("Error indexing document: " + fullFilePath, e);
         }
     }
 
-
     public static void main(String[] args) {
-
-        initailizePath();
-        initailizeDB();
-
-        Language.initalizeDictionary(stopsPath);
-        Language.initalizeHTML(scorePath);
+        initializePaths();
+        initializeDB();
+        Language.initializeDictionary(stopsPath);
+        Language.initializeHTML(scorePath);
 
         File folder = new File(docPath);
-    File[] listOfFiles = folder.listFiles((dir, name) -> name.endsWith(".txt"));
+        File[] listOfFiles = folder.listFiles((dir, name) -> name.endsWith(".txt"));
 
-    if (listOfFiles != null) {
-        for (File file : listOfFiles) {
-            String fileName = file.getName().replace(".txt", ""); // Remove .txt extension
-            Document existingDoc = docService.getDocumentByPath(fileName);
+        if (listOfFiles != null) {
+            for (File file : listOfFiles) {
+                String fileName = file.getName().replace(".txt", "");
+                Document existingDoc = docService.getDocumentByPath(fileName);
 
-            if (existingDoc == null) {
-                // Insert the new document into the documents collection
-                System.out.println("Adding new document to database: " + fileName);
-                docService.addDocument(fileName);
+                if (existingDoc == null) {
+                    System.out.println("Adding new document to database: " + fileName);
+                    docService.addDocument(fileName);
+                }
             }
         }
+
+        processUnindexedDocuments();
     }
 
-        FindIterable<Document> patch = docService.getUnindexedDocuments();
-
-        for (Document document : patch) {
-            ObjectId docid = document.getObjectId("_id");
+    private static void processUnindexedDocuments() {
+        FindIterable<Document> unindexedDocs = docService.getUnindexedDocuments();
+        for (Document document : unindexedDocs) {
+            ObjectId docId = document.getObjectId("_id");
             String path = document.getString("path");
-            String doc_path = Paths.get(docPath, docid + ".txt").toString();
-            index(path,docid,doc_path);
-            docService.setIndexed(docid,doc_path);
+            String docFilePath = Paths.get(docPath, docId + ".txt").toString();
+            indexDocument(path, docId, docFilePath);
+            docService.setIndexed(docId, docFilePath);
         }
     }
 }

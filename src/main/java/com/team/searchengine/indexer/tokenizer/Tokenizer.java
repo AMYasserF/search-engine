@@ -16,127 +16,103 @@ import java.util.regex.Pattern;
 
 public class Tokenizer {
 
-    private Document doc;
+    private Document htmlDoc;
     private int wordCount;
-    private HashMap<String, Token> tokenDic;
-    private RandomAccessFile file;
-    private int cursor;
+    private HashMap<String, Token> tokenDictionary;
+    private RandomAccessFile fileWriter;
 
-    public Tokenizer(String path) {
-        this.cursor = 1;
-
+    public Tokenizer(String htmlFilePath) {
         try {
-            File inputFile = new File(path);
-            doc = Jsoup.parse(inputFile, "UTF-8");
+            File inputFile = new File(htmlFilePath);
+            this.htmlDoc = Jsoup.parse(inputFile, "UTF-8");
         } catch (IOException e) {
-            throw new RuntimeException("Can't Parse File", e);
+            throw new RuntimeException("Unable to parse HTML file.", e);
         }
     }
 
-    private int getFilePosition() {
+    private int getCurrentFilePosition() {
         try {
-            return (int) file.getFilePointer();
+            return (int) fileWriter.getFilePointer();
         } catch (IOException e) {
-            throw new RuntimeException("Error getting file position", e);
+            throw new RuntimeException("Error retrieving file position", e);
         }
     }
 
-    private String removeSpecialChars(String token) {
-        return token.toLowerCase().replaceAll("[^a-zA-Z ]", "");
-    }
-
-    private void writeToFile(String token) {
+    private void writeTokenToFile(String token) {
         try {
-            file.writeBytes(token + " ");
+            fileWriter.writeBytes(token + " ");
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Failed to write token to file", e);
         }
-
-        this.cursor += token.length() + 1;
     }
 
-    private String compare(String pos1, String pos2) {
-        int score1 = Language.scoreHtml(pos1);
-        int score2 = Language.scoreHtml(pos2);
-
-        return score1 >= score2 ? pos1 : pos2;
+    private String cleanToken(String token) {
+        return token.toLowerCase().replaceAll("[^a-zA-Z]", "");
     }
 
-    private void tokenize(String text, String nodeName) {
-        Pattern pattern = Pattern.compile("\\s+");
-        String[] splitTokens = pattern.split(text);
+    private String selectDominantTag(String existingTag, String newTag) {
+        return Language.getHtmlScore(newTag) > Language.getHtmlScore(existingTag) ? newTag : existingTag;
+    }
 
-        for (String token : splitTokens) {
-            int position = getFilePosition();
-            writeToFile(token);
+    private void processText(String text, String htmlTag) {
+        String[] words = text.split("\\s+");
+        for (String word : words) {
+            int filePosition = getCurrentFilePosition();
+            writeTokenToFile(word);
 
-            token = removeSpecialChars(token);
+            String cleaned = cleanToken(word);
+            if (cleaned.isEmpty() || Language.isStopWord(cleaned)) continue;
 
-            if (Language.isStop(token))
-                continue;
+            String stemmed = stemToken(cleaned);
 
-            token = stemToken(token);
-
-            if (!tokenDic.containsKey(token)) {
-                Token newT = new Token(token, nodeName);
-                tokenDic.put(token, newT);
-                newT.position.add(position);
+            Token tokenEntry = tokenDictionary.get(stemmed);
+            if (tokenEntry == null) {
+                tokenEntry = new Token(stemmed, htmlTag);
+                tokenDictionary.put(stemmed, tokenEntry);
             } else {
-                Token t = tokenDic.get(token);
-                t.TF++;
-                t.html_pos = compare(t.html_pos, nodeName);
-                t.position.add(position);
+                tokenEntry.TF++;
+                tokenEntry.html_pos = selectDominantTag(tokenEntry.html_pos, htmlTag);
             }
-
+            tokenEntry.position.add(filePosition);
             wordCount++;
         }
     }
 
-    public int getWordCount() {
-        return wordCount;
-    }
-
-    private void tokenizeDOM(Node root) {
-        if (root instanceof TextNode) {
-            tokenize(((TextNode) root).text(), Objects.requireNonNull(root.parent()).nodeName());
-            return;
-        }
-
-        List<Node> nodes = root.childNodes();
-        for (Node node : nodes) {
-            tokenizeDOM(node);
+    private void processDOMTree(Node node) {
+        if (node instanceof TextNode) {
+            TextNode textNode = (TextNode) node;
+            processText(textNode.text(), Objects.requireNonNull(node.parent()).nodeName());
+        } else {
+            for (Node child : node.childNodes()) {
+                processDOMTree(child);
+            }
         }
     }
 
-    public HashMap<String, Token> tokenizeDocument(String docPath) {
-        tokenDic = new HashMap<>();
+    public HashMap<String, Token> tokenizeDocument(String outputFilePath) {
+        this.tokenDictionary = new HashMap<>();
+        openOutputFile(outputFilePath);
 
-        openFile(docPath);
+        processText(htmlDoc.title(), "title");
+        processDOMTree(htmlDoc.body());
 
-        String title = doc.title();
-        tokenize(title, "title");
-
-        Element body = doc.body();
-        tokenizeDOM(body);
-
-        closeFile();
-
-        return tokenDic;
+        closeOutputFile();
+        return tokenDictionary;
     }
 
-    private void closeFile() {
+    private void openOutputFile(String path) {
         try {
-            this.file.close();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private void openFile(String path) {
-        try {
-            file = new RandomAccessFile(path, "rw");
+            this.fileWriter = new RandomAccessFile(path, "rw");
         } catch (FileNotFoundException e) {
-            throw new RuntimeException("Can't open file", e);
+            throw new RuntimeException("Unable to open output file for writing.", e);
+        }
+    }
+
+    private void closeOutputFile() {
+        try {
+            this.fileWriter.close();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to close output file.", e);
         }
     }
 
@@ -145,5 +121,9 @@ public class Tokenizer {
         stemmer.setCurrent(token);
         stemmer.stem();
         return stemmer.getCurrent();
+    }
+
+    public int getWordCount() {
+        return this.wordCount;
     }
 }
