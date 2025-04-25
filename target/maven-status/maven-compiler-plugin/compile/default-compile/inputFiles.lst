@@ -5,11 +5,3 @@ D:\CMP\APT\Project\Search Engine\search-engine\src\main\java\com\team\searchengi
 D:\CMP\APT\Project\Search Engine\search-engine\src\main\java\com\team\searchengine\crawler\RobotsTxtManager.java
 D:\CMP\APT\Project\Search Engine\search-engine\src\main\java\com\team\searchengine\crawler\URLManager.java
 D:\CMP\APT\Project\Search Engine\search-engine\src\main\java\com\team\searchengine\crawler\URLUtils.java
-D:\CMP\APT\Project\Search Engine\search-engine\src\main\java\com\team\searchengine\indexer\Indexer.java
-D:\CMP\APT\Project\Search Engine\search-engine\src\main\java\com\team\searchengine\indexer\Language.java
-D:\CMP\APT\Project\Search Engine\search-engine\src\main\java\com\team\searchengine\indexer\Models\DocumentService.java
-D:\CMP\APT\Project\Search Engine\search-engine\src\main\java\com\team\searchengine\indexer\Models\TokenService.java
-D:\CMP\APT\Project\Search Engine\search-engine\src\main\java\com\team\searchengine\indexer\tokenizer\Doc.java
-D:\CMP\APT\Project\Search Engine\search-engine\src\main\java\com\team\searchengine\indexer\tokenizer\Token.java
-D:\CMP\APT\Project\Search Engine\search-engine\src\main\java\com\team\searchengine\indexer\tokenizer\Tokenizer.java
-D:\CMP\APT\Project\Search Engine\search-engine\src\main\java\com\team\searchengine\indexer\utils\DBManager.java

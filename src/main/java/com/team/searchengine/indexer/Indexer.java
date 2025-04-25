@@ -1,93 +1,24 @@
 package com.team.searchengine.indexer;
 
-import com.team.searchengine.indexer.Models.DocumentService;
-import com.team.searchengine.indexer.Models.TokenService;
-import com.team.searchengine.indexer.tokenizer.Token;
-import com.team.searchengine.indexer.tokenizer.Tokenizer;
-import com.team.searchengine.indexer.utils.DBManager;
-import com.mongodb.client.FindIterable;
-import com.mongodb.client.MongoDatabase;
-import org.bson.Document;
-import org.bson.types.ObjectId;
-
-import java.nio.file.Paths;
-import java.util.HashMap;
 import java.io.File;
 
-public class Indexer
-{
-    private static TokenService tokenService;
-    private static DocumentService docService;
-    private static String stopsPath;
-    public static String docPath;
-    public static String scorePath;
-
-
-    private static void initailizePath(){
-        String currentDirectory = System.getProperty("user.dir");
-        stopsPath = Paths.get(currentDirectory, "resources", "stops.txt").toString();
-        docPath = Paths.get(currentDirectory, "plain_docs").toString();
-        scorePath = Paths.get(currentDirectory, "resources" , "html.txt").toString();
-        docPath = docPath.trim();
-    }
-
-    private static void initailizeDB()
-    {
-        MongoDatabase connection = DBManager.connect("mongodb://localhost:27017","test");
-        docService = new DocumentService(connection);
-        tokenService =  new TokenService(connection);
-    }
-
-    private static void index(String path, ObjectId docid, String doc_path) {
-        // Construct the full file path
-        String fullFilePath = Paths.get(docPath, path).toString()+".txt";
-
-        System.out.println("Indexing document: " + fullFilePath);
-        if (!java.nio.file.Files.exists(Paths.get(fullFilePath))) {
-            throw new RuntimeException("File not found: " + fullFilePath);
-        }
-        try {
-            Tokenizer tokenizerInst = new Tokenizer(fullFilePath); // Pass the full file path
-            HashMap<String, Token> dictionary = tokenizerInst.tokenizeDocument(doc_path);
-            tokenService.insert(dictionary, docid.toString(), tokenizerInst.getWordCount());
-        } catch (Exception e) {
-            throw new RuntimeException("Error indexing document: " + fullFilePath, e);
-        }
-    }
-
-
+public class Indexer {
     public static void main(String[] args) {
+        File folder = new File("crawled_pages");
+        if (!folder.exists() || !folder.isDirectory()) {
+            System.out.println("Crawled pages folder not found!");
+            return;
+        }
 
-        initailizePath();
-        initailizeDB();
+        InvertedIndex index = new InvertedIndex();
 
-        Language.initalizeDictionary(stopsPath);
-        Language.initalizeHTML(scorePath);
-
-        File folder = new File(docPath);
-    File[] listOfFiles = folder.listFiles((dir, name) -> name.endsWith(".txt"));
-
-    if (listOfFiles != null) {
-        for (File file : listOfFiles) {
-            String fileName = file.getName().replace(".txt", ""); // Remove .txt extension
-            Document existingDoc = docService.getDocumentByPath(fileName);
-
-            if (existingDoc == null) {
-                // Insert the new document into the documents collection
-                System.out.println("Adding new document to database: " + fileName);
-                docService.addDocument(fileName);
+        for (File file : folder.listFiles()) {
+            if (file.getName().endsWith(".txt")) {
+                DocumentParser.parse(file, index);
             }
         }
-    }
 
-        FindIterable<Document> patch = docService.getUnindexedDocuments();
-
-        for (Document document : patch) {
-            ObjectId docid = document.getObjectId("_id");
-            String path = document.getString("path");
-            String doc_path = Paths.get(docPath, docid + ".txt").toString();
-            index(path,docid,doc_path);
-            docService.setIndexed(docid,doc_path);
-        }
+        System.out.println("Indexing complete!");
+        // Save index to disk (to do later)
     }
 }

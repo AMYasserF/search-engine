@@ -16,6 +16,11 @@ import org.jsoup.nodes.Element;
 import java.io.IOException;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.io.File;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 
 public class CrawlerTask implements Runnable {
     private final ConcurrentLinkedQueue<String> urlQueue;
@@ -30,13 +35,37 @@ public class CrawlerTask implements Runnable {
         this.robotsTxtManager = new RobotsTxtManager();
     }
 
+    private synchronized static void saveCrawledPage(String url, Document doc) {
+        try {
+            File dir = new File("crawled_pages");
+            if (!dir.exists())
+                dir.mkdirs();
+
+            String safeFileName = url.replaceAll("[^a-zA-Z0-9]", "_");
+            File file = new File(dir, safeFileName + ".txt");
+
+            String title = doc.title();
+            String headers = doc.select("h1, h2, h3").text();
+            String body = doc.body().text();
+
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+                writer.write("URL: " + url + "\n");
+                writer.write("Title: " + title + "\n");
+                writer.write("Headers: " + headers + "\n");
+                writer.write("Body: " + body + "\n");
+            }
+        } catch (IOException e) {
+            System.err.println("Error saving crawled page for URL: " + url);
+        }
+    }
+
     @Override
     public void run() {
-        while (manager.canCrawlMore()) {
-            System.out.println("thread " + Thread.currentThread().getName() + "Started");
+
+        while (CrawlerManager.canCrawlMore()) {
+
             String url = urlQueue.poll();
 
-            System.out.println("on url: " + url);
             if (url == null) {
                 System.out.println(
                         "Queue is empty. No more URLs to crawl. Exiting thread " + Thread.currentThread().getName());
@@ -49,9 +78,10 @@ public class CrawlerTask implements Runnable {
             try {
                 System.out.println("Crawling: " + url);
 
-                manager.incrementCrawlCount();
                 Document doc = Jsoup.connect(url).get();
-                urlManager.markVisited(url);
+                urlManager.markVisited(url, doc); // Pass the Document object to markVisited
+
+                // Extract and add new links to the queue
                 Elements links = doc.select("a[href]");
                 for (Element link : links) {
                     String nextUrl = URLUtils.normalizeUrl(link.absUrl("href"));

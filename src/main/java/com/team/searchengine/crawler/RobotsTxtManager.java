@@ -17,11 +17,9 @@ public class RobotsTxtManager {
 
             // if the host doesn't exist
             if (!disallowedMap.containsKey(host)) {
-                System.out.println("robots checking on " + host);
                 fetchAndParseRobotsTxt(urlObj, host);
             }
 
-            System.out.println("Checking robots.txt for: " + url);
             // is host exists return disallowed paths if not return empty set "Set.of()"
             boolean allowed = !isDisallowed(urlObj.getPath(), disallowedMap.getOrDefault(host, Set.of()));
             System.out.println("Allowed to crawl: " + allowed);
@@ -36,19 +34,16 @@ public class RobotsTxtManager {
     private void fetchAndParseRobotsTxt(URL urlObj, String host) {
         Set<String> disallowedPaths = new HashSet<>();
         try {
-            System.out.println("   fetch: ");
             String robotsUrl = urlObj.getProtocol() + "://" + host + "/robots.txt";
             // cast into Http connection to allow get method
 
             HttpURLConnection connection = (HttpURLConnection) new URL(robotsUrl).openConnection();
             connection.setConnectTimeout(5000); // 5 seconds
             connection.setReadTimeout(5000); // 5 seconds
-            System.out.println("Connecting to: " + robotsUrl);
             connection.setRequestMethod("GET");
 
             // if connection was successful
             if (connection.getResponseCode() == 200) {
-                System.out.println("STATUS  200: ");
                 try (BufferedReader br = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
                     String line;
                     while ((line = br.readLine()) != null) {

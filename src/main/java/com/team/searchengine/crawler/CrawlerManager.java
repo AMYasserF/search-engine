@@ -24,8 +24,8 @@ public class CrawlerManager {
     private final List<Thread> threads;
     private final URLManager urlManager;
     private final int threadCount;
-    private final int maxPages;
-    private final AtomicInteger pagesCrawled = new AtomicInteger(0);
+    private static final int maxPages = 3;
+    private static final AtomicInteger pagesCrawled = new AtomicInteger(0);
     private static final String QUEUE_FILE = "url_queue.txt";
 
     public CrawlerManager(List<String> seedUrls, int threadCount, int maxPages) {
@@ -33,7 +33,7 @@ public class CrawlerManager {
         this.threads = new ArrayList<>();
         this.urlManager = new URLManager();
         this.threadCount = threadCount;
-        this.maxPages = maxPages;
+        // this.maxPages = maxPages;
     }
 
     // Load the queue from file (before crawling starts)
@@ -83,12 +83,16 @@ public class CrawlerManager {
         }
     }
 
-    public boolean canCrawlMore() {
-        return pagesCrawled.get() < maxPages;
+    public synchronized static boolean canCrawlMoreAndIncrement() {
+        if (pagesCrawled.get() < maxPages) {
+            pagesCrawled.incrementAndGet();
+            return true;
+        }
+        return false;
     }
 
-    public void incrementCrawlCount() {
-        pagesCrawled.incrementAndGet();
+    public synchronized static boolean canCrawlMore() {
+        return (pagesCrawled.get() < maxPages);
     }
 
     public void startCrawling() {
