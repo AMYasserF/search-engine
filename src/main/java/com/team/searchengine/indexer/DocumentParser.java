@@ -3,8 +3,6 @@ package com.team.searchengine.indexer;
 import java.io.*;
 import java.util.*;
 
-import com.team.searchengine.queryprocessor.Stemmer;
-
 public class DocumentParser {
     public static void parse(File file, MongoDBManager dbManager, InvertedIndexManager indexManager) {
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
@@ -45,16 +43,14 @@ public class DocumentParser {
             }
 
             if (!url.isEmpty()) {
-                // Save full document fields to the documents collection
                 dbManager.saveDocument(url, title, h1, h2, h3, h4, h5, h6, strong, body);
 
-                // Add words to inverted index with different scores based on importance
-                addWordsToIndex(title, url, 5, indexManager); // Title is highest importance
-                addWordsToIndex(h1, url, 4, indexManager); // H1 tags
-                addWordsToIndex(h2, url, 3, indexManager); // H2 tags
-                addWordsToIndex(h3 + " " + h4 + " " + h5 + " " + h6, url, 2, indexManager); // H3-H6 combined
-                addWordsToIndex(strong, url, 2, indexManager); // <strong> and <b> tags
-                addWordsToIndex(body, url, 1, indexManager); // Normal body text
+                processSection(title, url, 5, indexManager);
+                processSection(h1, url, 4, indexManager);
+                processSection(h2, url, 3, indexManager);
+                processSection(h3 + " " + h4 + " " + h5 + " " + h6, url, 2, indexManager);
+                processSection(strong, url, 2, indexManager);
+                processSection(body, url, 1, indexManager);
             }
 
         } catch (IOException e) {
@@ -63,15 +59,19 @@ public class DocumentParser {
         }
     }
 
-  private static void addWordsToIndex(String text, String url, int score, InvertedIndexManager indexManager) {
-    String[] words = text.toLowerCase().split("\\W+");
-    for (String word : words) {
-        if (!word.isEmpty() && !StopWords.isStopWord(word)) {
-            String stemmedWord = Stemmer.stem(word);  // ⭐ apply stemming here
-            indexManager.addWord(stemmedWord, url, score);
+    private static void processSection(String text, String url, int score, InvertedIndexManager indexManager) {
+        Map<String, Integer> wordFrequency = new HashMap<>();
+        String[] words = text.toLowerCase().split("\\W+");
+        for (String word : words) {
+            if (!word.isEmpty() && !StopWords.isStopWord(word)) {
+                wordFrequency.put(word, wordFrequency.getOrDefault(word, 0) + 1);
+            }
+        }
+
+        for (Map.Entry<String, Integer> entry : wordFrequency.entrySet()) {
+            String word = entry.getKey();
+            int frequency = entry.getValue();
+            indexManager.addWord(word, url, score, frequency);
         }
     }
-}
-
-
 }

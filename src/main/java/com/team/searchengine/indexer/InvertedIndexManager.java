@@ -15,8 +15,10 @@ public class InvertedIndexManager {
         this.invertedCollection = db.getCollection("inverted_index");
     }
 
-    public void addWord(String word, String url, int score) {
-        Document posting = new Document("url", url).append("score", score);
+    public void addWord(String word, String url, int score, int frequency) {
+        Document posting = new Document("url", url)
+                .append("score", score)
+                .append("frequency", frequency);
 
         invertedCollection.updateOne(
                 Filters.eq("word", word),

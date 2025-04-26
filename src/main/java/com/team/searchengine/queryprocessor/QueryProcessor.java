@@ -27,6 +27,7 @@ public class QueryProcessor {
 
             // Search stemmed version (lower weight)
             String stemmed = Stemmer.stem(word);
+            System.out.println("word after stemming " + stemmed);
             if (!stemmed.equals(word)) {
                 findAndScore(stemmed, 0.5, docScores);
             }
@@ -37,8 +38,9 @@ public class QueryProcessor {
         } else {
             // Sort and display
             docScores.entrySet().stream()
-                .sorted((a, b) -> Double.compare(b.getValue(), a.getValue()))
-                .forEach(entry -> System.out.println("Document: " + entry.getKey() + ", Score: " + entry.getValue()));
+                    .sorted((a, b) -> Double.compare(b.getValue(), a.getValue()))
+                    .forEach(entry -> System.out
+                            .println("Document: " + entry.getKey() + ", Score: " + entry.getValue()));
         }
     }
 
