@@ -4,6 +4,7 @@ com\team\searchengine\App.class
 com\team\searchengine\crawler\URLManager.class
 com\team\searchengine\queryprocessor\Preprocessor.class
 com\team\searchengine\queryprocessor\QueryProcessor.class
+com\team\searchengine\queryprocessor\PhraseSearchHandler.class
 com\team\searchengine\crawler\Crawler.class
 com\team\searchengine\indexer\Indexer.class
 com\team\searchengine\queryprocessor\Stemmer.class
