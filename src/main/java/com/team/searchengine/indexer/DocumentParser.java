@@ -3,6 +3,8 @@ package com.team.searchengine.indexer;
 import java.io.*;
 import java.util.*;
 
+import com.team.searchengine.queryprocessor.Stemmer;
+
 public class DocumentParser {
     public static void parse(File file, MongoDBManager dbManager, InvertedIndexManager indexManager) {
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
@@ -61,13 +63,15 @@ public class DocumentParser {
         }
     }
 
-    private static void addWordsToIndex(String text, String url, int score, InvertedIndexManager indexManager) {
-        String[] words = text.toLowerCase().split("\\W+");
-        for (String word : words) {
-            if (!word.isEmpty() && !StopWords.isStopWord(word)) {
-                indexManager.addWord(word, url, score);
-            }
+  private static void addWordsToIndex(String text, String url, int score, InvertedIndexManager indexManager) {
+    String[] words = text.toLowerCase().split("\\W+");
+    for (String word : words) {
+        if (!word.isEmpty() && !StopWords.isStopWord(word)) {
+            String stemmedWord = Stemmer.stem(word);  // ⭐ apply stemming here
+            indexManager.addWord(stemmedWord, url, score);
         }
     }
+}
+
 
 }
