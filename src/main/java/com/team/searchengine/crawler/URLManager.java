@@ -73,13 +73,25 @@ public class URLManager {
             File file = new File(dir, safeFileName + ".txt");
 
             String title = doc.title();
-            String headers = doc.select("h1, h2, h3").text();
+            String h1 = doc.select("h1").text();
+            String h2 = doc.select("h2").text();
+            String h3 = doc.select("h3").text();
+            String h4 = doc.select("h4").text();
+            String h5 = doc.select("h5").text();
+            String h6 = doc.select("h6").text();
+            String strong = doc.select("strong, b").text(); // bold and strong
             String body = doc.body().text();
 
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
                 writer.write("URL: " + url + "\n");
                 writer.write("Title: " + title + "\n");
-                writer.write("Headers: " + headers + "\n");
+                writer.write("H1: " + h1 + "\n");
+                writer.write("H2: " + h2 + "\n");
+                writer.write("H3: " + h3 + "\n");
+                writer.write("H4: " + h4 + "\n");
+                writer.write("H5: " + h5 + "\n");
+                writer.write("H6: " + h6 + "\n");
+                writer.write("Strong: " + strong + "\n");
                 writer.write("Body: " + body + "\n");
             }
         } catch (IOException e) {

@@ -1,6 +1,11 @@
+com\team\searchengine\indexer\DocumentParser.class
+com\team\searchengine\indexer\Indexer.class
+com\team\searchengine\indexer\MongoDBManager.class
+com\team\searchengine\indexer\StopWords.class
 com\team\searchengine\App.class
 com\team\searchengine\crawler\URLManager.class
 com\team\searchengine\crawler\CrawlerManager.class
+com\team\searchengine\indexer\InvertedIndexManager.class
 com\team\searchengine\crawler\Crawler.class
 com\team\searchengine\crawler\CrawlerTask.class
 com\team\searchengine\crawler\RobotsTxtManager.class

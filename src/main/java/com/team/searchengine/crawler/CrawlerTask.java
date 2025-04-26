@@ -35,30 +35,6 @@ public class CrawlerTask implements Runnable {
         this.robotsTxtManager = new RobotsTxtManager();
     }
 
-    private synchronized static void saveCrawledPage(String url, Document doc) {
-        try {
-            File dir = new File("crawled_pages");
-            if (!dir.exists())
-                dir.mkdirs();
-
-            String safeFileName = url.replaceAll("[^a-zA-Z0-9]", "_");
-            File file = new File(dir, safeFileName + ".txt");
-
-            String title = doc.title();
-            String headers = doc.select("h1, h2, h3").text();
-            String body = doc.body().text();
-
-            try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
-                writer.write("URL: " + url + "\n");
-                writer.write("Title: " + title + "\n");
-                writer.write("Headers: " + headers + "\n");
-                writer.write("Body: " + body + "\n");
-            }
-        } catch (IOException e) {
-            System.err.println("Error saving crawled page for URL: " + url);
-        }
-    }
-
     @Override
     public void run() {
 

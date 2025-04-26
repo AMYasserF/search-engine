@@ -24,7 +24,7 @@ public class CrawlerManager {
     private final List<Thread> threads;
     private final URLManager urlManager;
     private final int threadCount;
-    private static final int maxPages = 3;
+    private static final int maxPages = 1;
     private static final AtomicInteger pagesCrawled = new AtomicInteger(0);
     private static final String QUEUE_FILE = "url_queue.txt";
 

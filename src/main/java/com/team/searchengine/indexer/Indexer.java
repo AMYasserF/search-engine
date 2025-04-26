@@ -10,15 +10,21 @@ public class Indexer {
             return;
         }
 
-        InvertedIndex index = new InvertedIndex();
+        MongoDBManager dbManager = new MongoDBManager();
+        InvertedIndexManager indexManager = new InvertedIndexManager();
+
+        // Clear old data before indexing
+        dbManager.clearDocuments();
+        indexManager.clearInvertedIndex();
 
         for (File file : folder.listFiles()) {
             if (file.getName().endsWith(".txt")) {
-                DocumentParser.parse(file, index);
+                DocumentParser.parse(file, dbManager, indexManager);
             }
         }
 
         System.out.println("Indexing complete!");
-        // Save index to disk (to do later)
+        dbManager.close();
+        indexManager.close();
     }
 }

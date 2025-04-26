@@ -5,3 +5,8 @@ D:\CMP\APT\Project\Search Engine\search-engine\src\main\java\com\team\searchengi
 D:\CMP\APT\Project\Search Engine\search-engine\src\main\java\com\team\searchengine\crawler\RobotsTxtManager.java
 D:\CMP\APT\Project\Search Engine\search-engine\src\main\java\com\team\searchengine\crawler\URLManager.java
 D:\CMP\APT\Project\Search Engine\search-engine\src\main\java\com\team\searchengine\crawler\URLUtils.java
+D:\CMP\APT\Project\Search Engine\search-engine\src\main\java\com\team\searchengine\indexer\DocumentParser.java
+D:\CMP\APT\Project\Search Engine\search-engine\src\main\java\com\team\searchengine\indexer\Indexer.java
+D:\CMP\APT\Project\Search Engine\search-engine\src\main\java\com\team\searchengine\indexer\InvertedIndexManager.java
+D:\CMP\APT\Project\Search Engine\search-engine\src\main\java\com\team\searchengine\indexer\MongoDBManager.java
+D:\CMP\APT\Project\Search Engine\search-engine\src\main\java\com\team\searchengine\indexer\StopWords.java
