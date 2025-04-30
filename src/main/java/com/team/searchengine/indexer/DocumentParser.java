@@ -44,13 +44,27 @@ public class DocumentParser {
 
             if (!url.isEmpty()) {
                 dbManager.saveDocument(url, title, h1, h2, h3, h4, h5, h6, strong, body);
+                
+                String description = body;
+                
+                // Step 1: Build word frequency for the whole document
+                Map<String, Integer> fullWordFreq = new HashMap<>();
+                int totalWords = 0;
+                
+                totalWords += processSection(fullWordFreq, title);
+                totalWords += processSection(fullWordFreq, h1);
+                totalWords += processSection(fullWordFreq, h2);
+                totalWords += processSection(fullWordFreq, h3 + " " + h4 + " " + h5 + " " + h6);
+                totalWords += processSection(fullWordFreq, strong);
+                totalWords += processSection(fullWordFreq, body);
 
-                processSection(title, url, 5, indexManager);
-                processSection(h1, url, 4, indexManager);
-                processSection(h2, url, 3, indexManager);
-                processSection(h3 + " " + h4 + " " + h5 + " " + h6, url, 2, indexManager);
-                processSection(strong, url, 2, indexManager);
-                processSection(body, url, 1, indexManager);
+                // Step 2: Insert words into inverted index
+                for (Map.Entry<String, Integer> entry : fullWordFreq.entrySet()) {
+                    String word = entry.getKey();
+                    int frequency = entry.getValue();
+                    double tf = (double) frequency / totalWords;
+                    indexManager.addWord(word, url, title, description, tf);
+                }
             }
 
         } catch (IOException e) {
@@ -59,19 +73,15 @@ public class DocumentParser {
         }
     }
 
-    private static void processSection(String text, String url, int score, InvertedIndexManager indexManager) {
-        Map<String, Integer> wordFrequency = new HashMap<>();
+    private static int processSection(Map<String, Integer> wordFrequency, String text) {
+        int wordCount = 0;
         String[] words = text.toLowerCase().split("\\W+");
         for (String word : words) {
             if (!word.isEmpty() && !StopWords.isStopWord(word)) {
                 wordFrequency.put(word, wordFrequency.getOrDefault(word, 0) + 1);
+                wordCount++;
             }
         }
-
-        for (Map.Entry<String, Integer> entry : wordFrequency.entrySet()) {
-            String word = entry.getKey();
-            int frequency = entry.getValue();
-            indexManager.addWord(word, url, score, frequency);
-        }
+        return wordCount;
     }
 }
