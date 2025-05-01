@@ -19,19 +19,13 @@ public class PageRankCalculator {
         // Fetch documents from the collection
         for (Document doc : pages.find()) {
             // Fetch the list of URLs in this document
-            List<String> urls = (List<String>) doc.get("urls");
+            String urls =  doc.get("urls");
 
-            // Fetch the list of outgoing links for these URLs (this is a list of lists of
-            // outgoing links)
-            List<List<String>> outgoingLinksList = (List<List<String>>) doc.get("outlinks");
+        
+            List<String> outgoingLinksList = (List<String>) doc.get("outlinks");
 
-            // Iterate over the URLs and their corresponding outgoing links
-            for (int i = 0; i < urls.size(); i++) {
-                String url = urls.get(i);
-                List<String> outgoingLinks = outgoingLinksList.get(i); // Get the outgoing links for this URL
 
-                outLinks.put(url, new HashSet<>(outgoingLinks)); // Store URL with its outgoing links as a Set
-            }
+            outLinks.put(url, new HashSet<>(outgoingLinksList)); 
         }
 
         mongoClient.close();
