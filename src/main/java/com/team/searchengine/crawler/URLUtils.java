@@ -44,4 +44,16 @@ public class URLUtils {
             return url.trim().toLowerCase();
         }
     }
+
+    public static String getDomain(String url) {
+        try {
+            URI uri = new URI(url).normalize();
+            String host = uri.getHost();
+            if (host == null)
+                return "";
+            return host.toLowerCase().replaceFirst("^www\\.", "");
+        } catch (URISyntaxException e) {
+            return "";
+        }
+    }
 }

@@ -93,6 +93,7 @@ public class URLManager {
                 writer.write("H6: " + h6 + "\n");
                 writer.write("Strong: " + strong + "\n");
                 writer.write("Body: " + body + "\n");
+
             }
         } catch (IOException e) {
             System.err.println("Error saving crawled page for URL: " + url);

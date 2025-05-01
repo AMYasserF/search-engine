@@ -14,61 +14,77 @@ import com.team.searchengine.crawler.URLUtils;
 
 import org.jsoup.nodes.Element;
 import java.io.IOException;
-import java.util.Queue;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.io.File;
-import java.io.BufferedWriter;
-import java.io.FileWriter;
+
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.UpdateOptions;
+
+import org.bson.BsonDocument;
 
 public class CrawlerTask implements Runnable {
-    private final ConcurrentLinkedQueue<String> urlQueue;
     private final URLManager urlManager;
-    private final CrawlerManager manager;
     private final RobotsTxtManager robotsTxtManager;
 
-    public CrawlerTask(ConcurrentLinkedQueue<String> urlQueue, URLManager urlManager, CrawlerManager manager) {
-        this.urlQueue = urlQueue;
+    public CrawlerTask(URLManager urlManager) {
         this.urlManager = urlManager;
-        this.manager = manager;
         this.robotsTxtManager = new RobotsTxtManager();
     }
 
     @Override
     public void run() {
 
-        while (CrawlerManager.canCrawlMore()) {
+        try (MongoClient mongoClient = MongoClients.create("mongodb://localhost:27017")) {
+            MongoDatabase db = mongoClient.getDatabase("searchengine");
+            MongoCollection<org.bson.Document> pages = db.getCollection("pages", org.bson.Document.class);
 
-            String url = urlQueue.poll();
+            while (CrawlerManager.canCrawlMore()) {
+                System.out.println("thread " + Thread.currentThread().getName() + " can crawl");
+                String url = CrawlerManager.urlQueue.poll();
 
-            if (url == null) {
-                System.out.println(
-                        "Queue is empty. No more URLs to crawl. Exiting thread " + Thread.currentThread().getName());
-                break; // Exit the loop and thread
-            }
-            if (urlManager.isVisited(url) || !robotsTxtManager.canCrawl(url)) {
-                System.out.println("URL not allowed or already visited: " + url);
-                continue;
-            }
-            try {
-                System.out.println("Crawling: " + url);
-
-                Document doc = Jsoup.connect(url).get();
-                urlManager.markVisited(url, doc); // Pass the Document object to markVisited
-
-                // Extract and add new links to the queue
-                Elements links = doc.select("a[href]");
-                for (Element link : links) {
-                    String nextUrl = URLUtils.normalizeUrl(link.absUrl("href"));
-                    if (!urlManager.isVisited(nextUrl) &&
-                            robotsTxtManager.canCrawl(nextUrl) &&
-                            URLUtils.isHtmlLink(nextUrl)) {
-                        urlQueue.add(nextUrl);
-                    }
+                if (url == null) {
+                    System.out.println(
+                            "Queue is empty. No more URLs to crawl. Exiting thread "
+                                    + Thread.currentThread().getName());
+                    break; // Exit the loop and thread
                 }
-            } catch (IOException ex) {
-                System.err.println("Failed to fetch: " + url);
+                if (urlManager.isVisited(url) || !robotsTxtManager.canCrawl(url)) {
+                    System.out.println("URL not allowed or already visited: " + url);
+                    continue;
+                }
+                try {
+                    System.out.println("Crawling: " + url);
+
+                    Document doc = Jsoup.connect(url).get();
+                    urlManager.markVisited(url, doc); // Pass the Document object to markVisited
+
+                    // Extract and add new links to the queue
+                    Elements links = doc.select("a[href]");
+                    List<String> outlinks = new ArrayList<>();
+                    for (Element link : links) {
+                        String nextUrl = URLUtils.normalizeUrl(link.absUrl("href"));
+                        if (!urlManager.isVisited(nextUrl) &&
+                                URLUtils.isHtmlLink(nextUrl)) {
+                            CrawlerManager.urlQueue.add(nextUrl);
+                            outlinks.add(nextUrl);
+                        }
+                    }
+
+                    BsonDocument pageDoc = new BsonDocument("url", new org.bson.BsonString(url))
+                            .append("outlinks", new org.bson.BsonArray(
+                                    outlinks.stream().map(org.bson.BsonString::new).toList()));
+                    pages.updateOne(
+                            Filters.eq("url", url),
+                            new BsonDocument("$set", pageDoc),
+                            new UpdateOptions().upsert(true));
+                } catch (IOException ex) {
+                    System.err.println("Failed to fetch: " + url);
+                }
             }
         }
     }

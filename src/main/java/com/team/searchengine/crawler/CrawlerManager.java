@@ -20,11 +20,11 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class CrawlerManager {
-    private final ConcurrentLinkedQueue<String> urlQueue;
+    public static ConcurrentLinkedQueue<String> urlQueue;
     private final List<Thread> threads;
     private final URLManager urlManager;
     private final int threadCount;
-    private static final int maxPages = 1;
+    private static int maxPages;
     private static final AtomicInteger pagesCrawled = new AtomicInteger(0);
     private static final String QUEUE_FILE = "url_queue.txt";
 
@@ -33,7 +33,7 @@ public class CrawlerManager {
         this.threads = new ArrayList<>();
         this.urlManager = new URLManager();
         this.threadCount = threadCount;
-        // this.maxPages = maxPages;
+        this.maxPages = maxPages;
     }
 
     // Load the queue from file (before crawling starts)
@@ -100,7 +100,7 @@ public class CrawlerManager {
         System.out.println("start crawling");
 
         for (int i = 0; i < threadCount; i++) {
-            Thread t = new Thread(new CrawlerTask(urlQueue, urlManager, this), "CrawlerThread-" + i);
+            Thread t = new Thread(new CrawlerTask(urlManager), "CrawlerThread-" + i);
             threads.add(t);
             t.start();
         }

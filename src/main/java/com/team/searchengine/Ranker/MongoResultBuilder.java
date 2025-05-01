@@ -1,3 +1,5 @@
+package com.team.searchengine.Ranker;
+
 import com.mongodb.client.*;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClients;
