@@ -87,7 +87,7 @@ public class ranker {
     }
     // sort elements by values
 
-    void sortByValue() {
+   public void sortByValue() {
 
         sortedlinks.clear();
 

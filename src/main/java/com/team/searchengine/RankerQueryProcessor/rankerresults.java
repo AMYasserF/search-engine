@@ -1,9 +1,9 @@
 package com.team.searchengine.RankerQueryProcessor;
 
 public class rankerresults {
-    String link;
-    String title;
-    String description;
+   public String link;
+   public String title;
+  public  String description;
 
     public rankerresults() {
     }

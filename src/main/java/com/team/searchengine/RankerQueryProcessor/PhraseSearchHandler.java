@@ -6,7 +6,7 @@ import org.bson.Document;
 import java.util.*;
 
 public class PhraseSearchHandler {
-    private final MongoCollection<Document> documentsCollection;
+    public final MongoCollection<Document> documentsCollection;
 
     public PhraseSearchHandler(MongoClient mongoClient) {
         MongoDatabase database = mongoClient.getDatabase("searchengine");
@@ -15,6 +15,8 @@ public class PhraseSearchHandler {
 
     public Set<String> searchPhrase(String phrase) {
         Set<String> result = new HashSet<>();
+        List<String> phraseTokens = Arrays.asList(phrase.toLowerCase().split("\\s+"));
+
         FindIterable<Document> docs = documentsCollection.find();
 
         for (Document doc : docs) {
@@ -24,11 +26,32 @@ public class PhraseSearchHandler {
                     allText.append(doc.getString(field)).append(" ");
                 }
             }
-            if (allText.toString().toLowerCase().contains(phrase.toLowerCase())) {
+
+            String[] docWords = allText.toString()
+                .toLowerCase()
+                .replaceAll("[^a-z0-9 ]", "")  // remove punctuation
+                .split("\\s+");
+
+            if (containsExactPhrase(docWords, phraseTokens)) {
                 result.add(doc.getString("url"));
             }
         }
+
         return result;
+    }
+
+    private boolean containsExactPhrase(String[] docWords, List<String> phraseTokens) {
+        for (int i = 0; i <= docWords.length - phraseTokens.size(); i++) {
+            boolean match = true;
+            for (int j = 0; j < phraseTokens.size(); j++) {
+                if (!docWords[i + j].equals(phraseTokens.get(j))) {
+                    match = false;
+                    break;
+                }
+            }
+            if (match) return true;
+        }
+        return false;
     }
 
     public Set<String> handlePhraseQuery(String input) {
@@ -64,12 +87,16 @@ public class PhraseSearchHandler {
             Set<String> nextResult = searchPhrase(phrases.get(i + 1));
             String op = operations.get(i);
 
-            if (op.equals("AND")) {
-                result.retainAll(nextResult);
-            } else if (op.equals("OR")) {
-                result.addAll(nextResult);
-            } else if (op.equals("NOT")) {
-                result.removeAll(nextResult);
+            switch (op) {
+                case "AND":
+                    result.retainAll(nextResult);
+                    break;
+                case "OR":
+                    result.addAll(nextResult);
+                    break;
+                case "NOT":
+                    result.removeAll(nextResult);
+                    break;
             }
         }
 

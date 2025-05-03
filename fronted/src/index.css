@@ -1,0 +1,25 @@
+body {
+  margin: 0;
+  font-family: 'Arial', sans-serif;
+  background-color: var(--background);
+  color: var(--text);
+  transition: background-color 0.3s, color 0.3s;
+}
+
+:root {
+  --background: #ffffff;
+  --text: #000000;
+}
+
+.dark-mode {
+  --background: #121212;
+  --text: #ffffff;
+}
+
+.container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
