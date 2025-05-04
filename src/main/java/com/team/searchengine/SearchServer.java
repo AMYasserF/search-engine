@@ -1,4 +1,7 @@
 package com.team.searchengine;
+import org.bson.Document;
+
+
 import io.javalin.Javalin;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -7,7 +10,6 @@ import com.team.searchengine.RankerQueryProcessor.wordResult;
 import com.team.searchengine.RankerQueryProcessor.ranker;
 import com.team.searchengine.RankerQueryProcessor.rankerresults;    
 import com.team.searchengine.RankerQueryProcessor.QueryProcessor;
-
 
 public class SearchServer {
 
@@ -18,20 +20,15 @@ public class SearchServer {
         QueryProcessor processor = new QueryProcessor();
 
         Javalin app = Javalin.create(config -> {
-            config.plugins.enableCors(cors -> {
-                cors.add(it -> {
-                    it.anyHost(); // Allow all or specify allowed host (e.g., "http://localhost:3000")
-                });
-            });
-        }).before(ctx -> {
-            ctx.header("Content-Type", "application/json");
-        }).start(7070);
+            config.plugins.enableCors(cors -> cors.add(it -> it.anyHost()));
+        }).before(ctx -> ctx.header("Content-Type", "application/json"))
+          .start(7070);
 
         // Search Endpoint with Pagination
         app.get("/search", ctx -> {
             String query = ctx.queryParam("q");
-            int page = ctx.queryParamAsClass("page", Integer.class).getOrDefault(1);
-            int size = ctx.queryParamAsClass("size", Integer.class).getOrDefault(10);
+            int page  = ctx.queryParamAsClass("page", Integer.class).getOrDefault(1);
+            int size  = ctx.queryParamAsClass("size", Integer.class).getOrDefault(10);
 
             long startTime = System.currentTimeMillis();
 
@@ -40,93 +37,120 @@ public class SearchServer {
                 return;
             }
 
-            // Update query history for suggestion feature
             queryHistory.put(query, queryHistory.getOrDefault(query, 0) + 1);
 
             List<ResultDTO> results = new ArrayList<>();
+            int totalCount;
+
             if (query.startsWith("\"") && query.endsWith("\"")) {
                 Set<String> phraseResults = processor.phraseHandler.handlePhraseQuery(query);
-                List<String> paginated = paginateList(new ArrayList<>(phraseResults), page, size);
+                totalCount = phraseResults.size();
 
-                for (String url : paginated) {
-                    results.add(new ResultDTO("Phrase Match", url, "Matched phrase in document."));
+                List<String> pageSlice = paginateList(new ArrayList<>(phraseResults), page, size);
+                for (String url : pageSlice) {
+                    results.add(new ResultDTO("Phrase Match", url, truncateSnippet("Matched phrase in document.", query)));
                 }
+                
+                
+
+                // 2) for each URL load full doc to get title+content
+                
             } else {
-                List<String> wordIDs = processor.search(query);
-                List<wordResult> wordResults = MongoResultBuilder.getWordResults(wordIDs, processor.invertedIndex);
-                ArrayList<wordResult> resultsArrayList = new ArrayList<>(wordResults);
+                List<String> wordIDs       = processor.search(query);
+                List<wordResult> wrs       = MongoResultBuilder.getWordResults(wordIDs, processor.invertedIndex);
+                ArrayList<wordResult> list = new ArrayList<>(wrs);
 
                 ranker myRanker = new ranker();
-                myRanker.score(resultsArrayList, (ArrayList<String>) wordIDs);
+                myRanker.score(list, (ArrayList<String>) wordIDs);
                 myRanker.sortByValue();
                 List<rankerresults> sortedLinks = myRanker.setresults();
 
-                // Apply pagination
-                List<rankerresults> paginated = paginateList(sortedLinks, page, size);
+                totalCount = sortedLinks.size();
 
-                for (rankerresults result : paginated) {
-                    String snippet = getSnippet(result.description, query);
-                    results.add(new ResultDTO(result.title, result.link, snippet));
+                List<rankerresults> pageSlice = paginateList(sortedLinks, page, size);
+                for (rankerresults r : pageSlice) {
+                    String snippet = getTwentyWordSnippet(r.description, query);
+                    results.add(new ResultDTO(r.title, r.link, snippet));
                 }
             }
 
             long endTime = System.currentTimeMillis();
-            Map<String, Object> response = new HashMap<>();
-            response.put("query", query);
-            response.put("page", page);
-            response.put("size", size);
-            response.put("time", (endTime - startTime) / 1000.0 + " seconds");
-            response.put("total", results.size());  // Include total results count
-            response.put("results", results);
 
-            ctx.json(response);
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("query", query);
+            resp.put("page",  page);
+            resp.put("size",  size);
+            resp.put("time",  (endTime - startTime)/1000.0 + " seconds");
+            resp.put("total", totalCount);
+            resp.put("results", results);
+
+            ctx.json(resp);
         });
 
-        // Suggestion Endpoint
         app.get("/suggest", ctx -> {
             String prefix = ctx.queryParam("q");
             if (prefix == null || prefix.isBlank()) {
                 ctx.json(Collections.emptyList());
                 return;
             }
-
             List<String> suggestions = queryHistory.entrySet().stream()
-                    .filter(entry -> entry.getKey().toLowerCase().startsWith(prefix.toLowerCase()))
-                    .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
-                    .limit(5)
-                    .map(Map.Entry::getKey)
-                    .toList();
-
+                .filter(e -> e.getKey().toLowerCase().startsWith(prefix.toLowerCase()))
+                .sorted((a,b) -> b.getValue().compareTo(a.getValue()))
+                .limit(5)
+                .map(Map.Entry::getKey)
+                .toList();
             ctx.json(suggestions);
         });
 
         Runtime.getRuntime().addShutdownHook(new Thread(processor::close));
     }
 
-    // Generic pagination method
     private static <T> List<T> paginateList(List<T> fullList, int page, int size) {
-        int fromIndex = Math.max(0, (page - 1) * size);
-        int toIndex = Math.min(fullList.size(), fromIndex + size);
-        if (fromIndex >= toIndex) return Collections.emptyList();
-        return fullList.subList(fromIndex, toIndex);
+        int from = Math.max(0, (page - 1)*size);
+        int to   = Math.min(fullList.size(), from + size);
+        if (from >= to) return Collections.emptyList();
+        return fullList.subList(from, to);
     }
 
-    private static String getSnippet(String text, String keyword) {
+    private static String getTwentyWordSnippet(String text, String keyword) {
         String[] words = text.split("\\s+");
-        List<String> snippet = new ArrayList<>();
-        keyword = keyword.toLowerCase();
+        String lowerKey = keyword.toLowerCase();
 
+        int idx = -1;
         for (int i = 0; i < words.length; i++) {
-            if (words[i].toLowerCase().contains(keyword)) {
-                words[i] = words[i].replaceAll("(?i)" + keyword, "<b>" + keyword + "</b>");
-                int start = Math.max(0, i - 3);
-                int end = Math.min(words.length, i + 6);
-                snippet.addAll(Arrays.asList(words).subList(start, end));
+            if (words[i].toLowerCase().contains(lowerKey)) {
+                idx = i;
                 break;
             }
         }
 
-        return String.join(" ", snippet);
+        int snippetSize = 20;
+        int start, end;
+        if (idx == -1) {
+            start = 0;
+            end = Math.min(snippetSize, words.length);
+        } else {
+            int half = snippetSize / 2;
+            start = Math.max(0, idx - half);
+            end   = Math.min(words.length, start + snippetSize);
+            if (end - start < snippetSize && start > 0) {
+                start = Math.max(0, end - snippetSize);
+            }
+        }
+
+        for (int i = start; i < end; i++) {
+            if (words[i].toLowerCase().contains(lowerKey)) {
+                words[i] = words[i].replaceAll("(?i)" + keyword, "<b>" + keyword + "</b>");
+            }
+        }
+
+        return String.join(" ", Arrays.copyOfRange(words, start, end));
+    }
+
+    private static String truncateSnippet(String text, String keyword) {
+        String[] words = text.split("\\s+");
+        int end = Math.min(20, words.length);
+        return String.join(" ", Arrays.copyOfRange(words, 0, end));
     }
 
     public record ResultDTO(String title, String url, String snippet) {}

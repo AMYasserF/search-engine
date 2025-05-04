@@ -18,6 +18,7 @@ function SearchBar() {
       const fetchSuggestions = async () => {
         try {
           const response = await axios.get(`http://localhost:7070/suggest?q=${encodeURIComponent(query)}`);
+          console.log("Suggestions:", response.data); // Log the suggestions received
           setSuggestions(response.data || []);
           setShowSuggestions(true);
         } catch (error) {

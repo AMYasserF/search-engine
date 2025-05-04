@@ -1,0 +1,17 @@
+/* SearchResults.css (or wherever you keep your results styles) */
+
+/* space between each result */
+.result-item {
+    margin-bottom: 2rem;
+  }
+  
+  /* title in blue */
+  .result-item .result-title {
+    color: blue;
+  }
+  
+  /* URL line in green */
+  .result-item .result-url {
+    color: green;
+  }
+  

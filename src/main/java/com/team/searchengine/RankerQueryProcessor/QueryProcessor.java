@@ -10,12 +10,16 @@ public class QueryProcessor {
     public final MongoClient mongoClient;
     public final PhraseSearchHandler phraseHandler;
     public final MongoDatabase database;
+    public final MongoCollection<Document> documents;      
+
     public final MongoCollection<Document> invertedIndex;
 
     public QueryProcessor() {
         mongoClient = MongoClients.create("mongodb://localhost:27017");
         database = mongoClient.getDatabase("searchengine");
         invertedIndex = database.getCollection("inverted_index");
+        documents    = database.getCollection("documents");    
+
         phraseHandler = new PhraseSearchHandler(mongoClient);
     }
 
@@ -119,7 +123,7 @@ public class QueryProcessor {
             
                 System.out.println("Link: " + result.link);
                 System.out.println("Title: " + result.title);
-                System.out.println("Description: " + highlightedDescription);
+                System.out.println("Description: " + result.description);
                 System.out.println("-------------------------");
             }
         }

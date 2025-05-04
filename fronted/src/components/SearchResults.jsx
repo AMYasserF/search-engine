@@ -1,73 +1,75 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import './SearchResults.css';
 
 function useQuery() {
   return new URLSearchParams(useLocation().search);
 }
 
-function SearchResults() {
-  const query = useQuery().get('q');
+export default function SearchResults() {
+  const query     = useQuery().get('q') || '';
+  const pageParam = parseInt(useQuery().get('page') || '1', 10);
   const [results, setResults] = useState([]);
+  const [info,    setInfo]    = useState({ time: 0, total: 0, size: 10 });
   const [loading, setLoading] = useState(false);
-  const [info, setInfo] = useState({ time: 0, total: 0 });
+  const navigate = useNavigate();
 
   useEffect(() => {
-    if (query) {
-      const fetchResults = async () => {
-        setLoading(true);
-        try {
-          const response = await axios.get(`http://localhost:7070/search?q=${encodeURIComponent(query)}`);
-          setResults(response.data.results || []);
-          setInfo({ time: response.data.time, total: response.data.total });
-        } catch (err) {
-          console.error(err);
-          setResults([]);
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchResults();
-    }
-  }, [query]);
+    if (!query) return;
+    setLoading(true);
+    axios.get(`http://localhost:7070/search?q=${encodeURIComponent(query)}&page=${pageParam}&size=10`)
+      .then(res => {
+        setResults(res.data.results || []);
+        setInfo({ time: res.data.time, total: res.data.total, size: res.data.size });
+      })
+      .catch(() => setResults([]))
+      .finally(() => setLoading(false));
+  }, [query, pageParam]);
 
-  const highlight = useCallback((text, term) => {
-    if (!term) return text;
-    const regex = new RegExp(`(${term.split(' ').join('|')})`, 'gi');
-    return text.split(regex).map((part, i) =>
-      regex.test(part) ? <span key={i} className="font-bold bg-yellow-100">{part}</span> : part
-    );
-  }, []);
+  const totalPages = Math.ceil(info.total / info.size);
+  const goPage     = p => { if (p >= 1 && p <= totalPages) navigate(`?q=${encodeURIComponent(query)}&page=${p}`); };
+
+  const getDomain = url => {
+    try { return new URL(url).hostname.replace(/^www\./, ''); }
+    catch { return ''; }
+  };
 
   return (
-    <div className="max-w-2xl mx-auto my-10 px-4">
-      <h2 className="text-2xl mb-4">Search results for "<strong>{query}</strong>"</h2>
+    <div className="results-container">
+      <h2 className="results-header">Results for “{query}”</h2>
       {loading ? (
-        <p>Loading...</p>
+        <p>Loading…</p>
       ) : results.length === 0 ? (
         <p>No results found.</p>
       ) : (
         <>
-          <p className="text-sm text-gray-600 mb-4">
-            {info.total} results found in {info.time}.
-          </p>
-          {results.map((result, idx) => (
-            <div key={idx} className="mb-6">
-              <a
-                href={result.url}
-                target="_blank"
-                rel="noreferrer"
-                className="text-lg text-blue-600 hover:underline"
-              >
-                {highlight(result.title, query)}
-              </a>
-              <p>{highlight(result.snippet, query)}</p>
-            </div>
-          ))}
+          <p className="results-info">{info.total} results in {info.time}</p>
+          {results.map((r, i) => {
+            const domain = getDomain(r.url);
+            return (
+              <div key={i} className="result-item">
+                <div className="result-title">
+                  {r.title}{domain && <> | {domain}</>}
+                </div>
+                <div className="result-url">
+                  URL: <a href={r.url} target="_blank" rel="noreferrer">{r.url}</a>
+                </div>
+                <div className="result-snippet" dangerouslySetInnerHTML={{ __html: r.snippet }} />
+              </div>
+            );
+          })}
+          <div className="pagination">
+            <button onClick={() => goPage(pageParam - 1)} disabled={pageParam === 1}>Previous</button>
+            {Array.from({ length: totalPages }, (_, idx) => (
+              <button key={idx} onClick={() => goPage(idx + 1)} className={pageParam === idx + 1 ? 'active' : ''}>
+                {idx + 1}
+              </button>
+            ))}
+            <button onClick={() => goPage(pageParam + 1)} disabled={pageParam === totalPages}>Next</button>
+          </div>
         </>
       )}
     </div>
   );
 }
-
-export default SearchResults;
