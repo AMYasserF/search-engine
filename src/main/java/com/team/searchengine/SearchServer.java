@@ -2,18 +2,12 @@ package com.team.searchengine;
 import io.javalin.Javalin;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import com.team.searchengine.indexer.Indexer;
 import com.team.searchengine.RankerQueryProcessor.MongoResultBuilder;
 import com.team.searchengine.RankerQueryProcessor.wordResult;
 import com.team.searchengine.RankerQueryProcessor.ranker;
 import com.team.searchengine.RankerQueryProcessor.rankerresults;    
 import com.team.searchengine.RankerQueryProcessor.QueryProcessor;
-import com.team.searchengine.RankerQueryProcessor.Stemmer;
-import com.team.searchengine.RankerQueryProcessor.Preprocessor;
-import com.team.searchengine.RankerQueryProcessor.PhraseSearchHandler;
 
-import com.team.searchengine.RankerQueryProcessor.*;
-import com.team.searchengine.crawler.*;
 
 public class SearchServer {
 
