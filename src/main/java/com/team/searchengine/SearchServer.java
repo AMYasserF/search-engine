@@ -1,6 +1,7 @@
 package com.team.searchengine;
 import org.bson.Document;
 
+import java.util.stream.Collectors;
 
 import io.javalin.Javalin;
 import java.util.*;
@@ -48,7 +49,20 @@ public class SearchServer {
 
                 List<String> pageSlice = paginateList(new ArrayList<>(phraseResults), page, size);
                 for (String url : pageSlice) {
-                    results.add(new ResultDTO("Phrase Match", url, truncateSnippet("Matched phrase in document.", query)));
+                    Document doc = processor.documents.find(new Document("url", url)).first();
+                    Optional.ofNullable(doc).ifPresent(d -> {
+                        String title = d.getString("title");
+                        String snippet = d.getString("body"); // Assuming body contains the main content
+                        results.add(new ResultDTO(title, url, getTwentyWordSnippetpharse(snippet, query)));
+                    });
+                    
+                    if (results.isEmpty()) {
+                        results.add(new ResultDTO("No results found", url, "No snippet available."));
+                    } else {
+                        // Highlight the matched phrase in the snippet
+                        String highlightedSnippet = getTwentyWordSnippet(results.get(0).snippet, query);
+                        results.set(0, new ResultDTO(results.get(0).title, url, highlightedSnippet));
+                    }
                 }
                 
                 
@@ -111,6 +125,60 @@ public class SearchServer {
         if (from >= to) return Collections.emptyList();
         return fullList.subList(from, to);
     }
+    public static String getTwentyWordSnippetpharse(String body, String query) {
+        if (body == null || body.isEmpty() || query == null) return "";
+    
+        // Remove quotes from phrase query
+        String cleanQuery = query.replaceAll("^\"|\"$", "").toLowerCase();
+        String[] queryWords = cleanQuery.split("\\s+");
+    
+        // Split body into words, keeping original words for final output
+        String[] bodyWords = body.split("\\s+");
+        List<String> lowerWords = Arrays.stream(bodyWords)
+                .map(w -> w.toLowerCase().replaceAll("[^a-z0-9]", ""))
+                .collect(Collectors.toList());
+    
+        // Search for phrase
+        for (int i = 0; i <= lowerWords.size() - queryWords.length; i++) {
+            boolean match = true;
+            for (int j = 0; j < queryWords.length; j++) {
+                if (!lowerWords.get(i + j).equals(queryWords[j])) {
+                    match = false;
+                    break;
+                }
+            }
+            if (match) {
+                // Get snippet around matched phrase
+                int start = Math.max(0, i - 10);
+                int end = Math.min(bodyWords.length, i + queryWords.length + 10);
+    
+                StringBuilder snippet = new StringBuilder();
+                for (int k = start; k < end; k++) {
+                    // Highlight matching phrase
+                    String word = bodyWords[k];
+                    String wordClean = lowerWords.get(k);
+                    if (k >= i && k < i + queryWords.length) {
+                        snippet.append("<b>").append(word).append("</b> ");
+                    } else {
+                        snippet.append(word).append(" ");
+                    }
+                }
+                return snippet.toString().trim() + "...";
+            }
+        }
+    
+        // If phrase not found, fallback to first 20 words
+        return Arrays.stream(bodyWords).limit(20).collect(Collectors.joining(" ")) + "...";
+    }
+    private static Set<String> getQueryTermsForSnippet(String query) {
+        return Arrays.stream(query.replaceAll("\"", "")
+                                  .replaceAll("(?i)\\bAND\\b|\\bOR\\b", "")
+                                  .split("\\s+"))
+                     .filter(term -> !term.equalsIgnoreCase("NOT"))
+                     .map(String::toLowerCase)
+                     .collect(Collectors.toSet());
+    }
+    
 
     private static String getTwentyWordSnippet(String text, String keyword) {
         String[] words = text.split("\\s+");
