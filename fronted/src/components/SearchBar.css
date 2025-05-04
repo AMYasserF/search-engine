@@ -61,7 +61,7 @@
   
   .search-icon-button {
     position: absolute;
-    right: 10px; 
+    right: 0px; 
     top: 50%;
     transform: translateY(-50%); 
     background-color: #4285f4;
