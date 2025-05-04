@@ -28,11 +28,18 @@ export default function SearchResults() {
   }, [query, pageParam]);
 
   const totalPages = Math.ceil(info.total / info.size);
-  const goPage     = p => { if (p >= 1 && p <= totalPages) navigate(`?q=${encodeURIComponent(query)}&page=${p}`); };
+  const goPage = (p) => {
+    if (p >= 1 && p <= totalPages) {
+      navigate(`?q=${encodeURIComponent(query)}&page=${p}`);
+    }
+  };
 
-  const getDomain = url => {
-    try { return new URL(url).hostname.replace(/^www\./, ''); }
-    catch { return ''; }
+  const getDomain = (url) => {
+    try {
+      return new URL(url).hostname.replace(/^www\./, '');
+    } catch {
+      return '';
+    }
   };
 
   return (
@@ -60,13 +67,17 @@ export default function SearchResults() {
             );
           })}
           <div className="pagination">
-            <button onClick={() => goPage(pageParam - 1)} disabled={pageParam === 1}>Previous</button>
+            <button onClick={() => goPage(pageParam - 1)} disabled={pageParam === 1}>«</button>
             {Array.from({ length: totalPages }, (_, idx) => (
-              <button key={idx} onClick={() => goPage(idx + 1)} className={pageParam === idx + 1 ? 'active' : ''}>
+              <button
+                key={idx}
+                onClick={() => goPage(idx + 1)}
+                className={pageParam === idx + 1 ? 'active' : ''}
+              >
                 {idx + 1}
               </button>
             ))}
-            <button onClick={() => goPage(pageParam + 1)} disabled={pageParam === totalPages}>Next</button>
+            <button onClick={() => goPage(pageParam + 1)} disabled={pageParam === totalPages}>»</button>
           </div>
         </>
       )}
